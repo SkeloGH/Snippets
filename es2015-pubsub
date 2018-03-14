@@ -1,0 +1,100 @@
+/*jshint esversion: 6*/
+/*jshint asi:true */
+
+/** Singleton class used for means of communication between modules */
+class PubSub {
+  /**
+   * Create a pubsub singleton.
+   * const PubSubSingleton = new PubSub();
+   *
+   * Subscribe:
+   * let my_subscription = PubSubSingleton.on('my event', callback)
+   *
+   * Unsubscribe:
+   * my_subscription.remove()
+   *
+   * Publish
+   * PubSubSingleton.emit('my event', data)
+   */
+  constructor(){
+    /**
+     * Used to reference event namespaces and their callbacks
+     * {'ev.namespace':[fn]}
+     */
+    this.topics = {}
+  }
+
+  /**
+   * Subscribe a callback to a given event name
+   * @param {string} topic - The event name.
+   * @param {function} cb - The function to be called.
+   * @return {object} - An object with the subscription removal method.
+   */
+  on(topic, cb){
+    let listener_idx;
+
+    if(!this.topics[topic]){
+        this.topics[topic] = []
+    }
+    
+    listener_idx = this.topics[topic].push(cb) -1
+    
+    return {
+      /**
+       * Remove the subscribed callback from the given event namespace.
+       */
+      remove: ()=>{
+        delete this.topics[topic][listener_idx]
+      }
+    }
+  }
+
+  /**
+   * Publish a given event name, passing the event data to
+   *   subscribed functions.
+   * @param {string} topic - The event name.
+   * @param {object} data - The object to be passed to the
+   *   callback as argument.
+   */
+  emit(topic, data){
+    if(this.topics[topic]){
+        this.topics[topic].forEach((cb)=>{
+        cb.apply(this,[data])
+      })
+    }
+  }
+}
+
+/**
+ * Usage example
+ */
+
+class Dog{
+  constructor(){}
+  
+  bark(){
+    alert('the dog barks')
+    Events.emit('dog.bark')
+  }
+}
+
+class Cat{
+  constructor(){
+    this.run_listener = Events.on('dog.bark', this.run.bind(this))
+  }
+  run(){
+    alert('the cat runs')
+    // The cat is safe, and goes to sleep
+    this.run_listener.remove()
+  }
+}
+
+const Events = new PubSub()
+let dog      = new Dog()
+let cat      = new Cat()
+
+// Bark on start, try to scare the cat.
+dog.bark()
+
+// The cat should run, then if the dog barks again, the cat must be gone.
+setTimeout(dog.bark, 2000)
