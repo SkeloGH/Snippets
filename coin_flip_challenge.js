@@ -51,7 +51,6 @@ function randomNumber(num) {
   * @assert {Number} Should be less than the input {Number}.
   * @return {Bool} Wether the test passed or not.
   *
-  * @description
 */
 function testAll(){
   var result     = false;
@@ -79,7 +78,6 @@ function testAll(){
   * @assert {Number} Should be different than the previous one, at least once.
   * @return {Bool} Wether the test passed or not.
   *
-  * @description
 */
 function testVariability(num){
   var result = false;
