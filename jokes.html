@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chuck Norris Jokes</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+      const API_URL = 'https://api.chucknorris.io/jokes/random';
+
+      /*
+      interface Joke {
+        categories: string[];
+        created_at: string;
+        icon_url: string;
+        id: string;
+        updated_at: string;
+        url: string;
+        value: string;
+      }
+      */
+
+      const batchFetch/*<Promise<Response>[]>*/ = async (
+        url/*: string*/,
+        batchSize/*: number*/
+      )/*: Promise<Response[]>*/ => {
+        const fetches/*: Promise<Response>[]*/ = Array.from({ length: batchSize }, () => fetch(url));
+        return Promise.all(fetches);
+      }
+
+      const JokesApp/*: React.Element*/ = () => {
+        const maxJokes/*: number*/ = 30;
+        let batchSize/*: number*/ = 1;
+        const maxBatchAttempts/*: number*/ = 5;
+        const [
+          attempts/*: number*/,
+          setAttempts/*: React.Dispatch<React.SetStateAction<number>>*/
+        ] = React.useState(0);
+        const [
+          jokes/*: Joke[]*/,
+          setJokes/*: React.Dispatch<React.SetStateAction<Joke[]>>*/
+        ] = React.useState([]/*as Joke[]*/);
+        const [
+          filteredJokes/*: Joke[]*/,
+          setFilteredJokes/*: React.Dispatch<React.SetStateAction<Joke[]>>*/
+        ] = React.useState([]/*as Joke[]*/);
+        const [
+          inputDisabled/*: boolean*/,
+          setInputDisabled/*: React.Dispatch<React.SetStateAction<boolean>>*/
+        ] = React.useState(false);
+
+
+        React.useEffect(() => {
+            const getJokes/*: () => Promise<void>*/ = async () => {
+              batchSize = maxJokes < batchSize ? maxJokes : batchSize;
+              batchSize = maxJokes - jokes.length < batchSize ? maxJokes - jokes.length : batchSize;
+              const responses/*: Response[]*/ = await batchFetch(API_URL, batchSize);
+              let newJokes = await Promise.all(responses.map((response) => response.json()));
+              setJokes((jokes) => {
+                const deduped = newJokes.filter((newJoke, index) => {
+                  const isDuplicate = newJokes.findIndex((joke) => joke.id === newJoke.id) !== index;
+                  return !isDuplicate && !jokes.some((joke) => joke.id === newJoke.id);
+                });
+                if (deduped.length === 0) setAttempts(attempts + 1);
+                return [...jokes, ...deduped];
+              });
+            }
+            setFilteredJokes(jokes);
+            if (jokes.length < maxJokes && attempts < maxBatchAttempts) {
+              setInputDisabled(true);
+              getJokes();
+            } else {
+              setInputDisabled(false);
+            }
+        }, [jokes]);
+
+        const handleFilterChange = (event/*: React.ChangeEvent<HTMLInputElement>*/) => {
+          const filteredJokes = jokes.filter((joke) => joke.value.toLowerCase().includes(event.target.value.toLowerCase()));
+          const isFiltering = event.target.value.length > 0;
+          if (isFiltering) {
+            setFilteredJokes(filteredJokes);
+          }else {
+            setFilteredJokes(jokes);
+          }
+        }
+
+        const Table = React.createElement(
+          'table', {},
+            React.createElement('tbody', {},
+            filteredJokes.map((joke, index) => React.createElement('tr', { key: joke.id },
+                React.createElement('td', {}, `${index + 1}.`),
+                React.createElement('td', {}, joke.value)
+              ))
+            )
+        );
+
+        const FilterInput = React.createElement('input', {
+          type: 'text',
+          placeholder: inputDisabled ? 'Fetching...' : 'Filter jokes',
+          disabled: inputDisabled,
+          onChange: handleFilterChange
+        });
+
+        return React.createElement('div', {},
+          FilterInput,
+          React.createElement('h1', {}, 'Chuck Norris Jokes'),
+          Table,
+          React.createElement('p', {}, `Fetched ${jokes.length} unique jokes`),
+          React.createElement('p', {}, `Retries: ${attempts}`)
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(JokesApp));
+    </script>
+</body>
+</html>
